@@ -1,0 +1,85 @@
+{
+  "_comment": "Central configuration for X-UI + Tor multi-country gateway. Every script (start.sh, panel-bootstrap.sh) reads this file via `jq` — edit here, not in the scripts.",
+
+  "api": {
+    "_comment": "Optional external IP/country lookup API (Cloudflare Worker). Used only as an EXTRA verification source; the built-in providers in get_country_from_ip() are tried first because they are faster and more reliable.",
+    "base_url": "https://dry-thunder-684c.4j89drj49rd-14070.workers.dev",
+    "endpoints": {
+      "tor_check": "/tor-check",
+      "lookup": "/lookup",
+      "detect": "/detect",
+      "countries": "/countries",
+      "ips_txt": "/ips.txt"
+    },
+    "timeout": 6,
+    "retry_attempts": 2
+  },
+
+  "tor": {
+    "_comment": "Discovery/rotation tuning. rotate_seconds = how often a VERIFIED country gets a fresh circuit. bootstrap_timeout = max time to wait for a Tor process to reach 100% bootstrap. verify_max_retries = max attempts to verify exit node country.",
+    "rotate_seconds": 300,
+    "strict_nodes": true,
+    "bootstrap_timeout": 240,
+    "verify_max_retries": 15,
+    "verify_retry_sleep": 4,
+    "circuit_settle_sleep": 6,
+    "parallel_bootstrap": true,
+    "parallel_verify": true,
+
+    "exclude_countries": ["ir", "kp", "cn", "ru", "sy", "cu", "ve", "ua", "by", "uz", "kz", "tm", "kg", "tj", "az", "am", "ge", "md"],
+
+    "countries": [
+      { "code": "ca", "label": "Canada",         "port": 9050, "control_port": 9150, "inbound_port": 8081, "path": "/in1"  },
+      { "code": "tr", "label": "Turkey",          "port": 9051, "control_port": 9151, "inbound_port": 8082, "path": "/in2"  },
+      { "code": "de", "label": "Germany",         "port": 9052, "control_port": 9152, "inbound_port": 8083, "path": "/in3"  },
+      { "code": "fr", "label": "France",          "port": 9053, "control_port": 9153, "inbound_port": 8084, "path": "/in4"  },
+      { "code": "se", "label": "Sweden",          "port": 9054, "control_port": 9154, "inbound_port": 8085, "path": "/in5"  },
+      { "code": "ch", "label": "Switzerland",     "port": 9055, "control_port": 9155, "inbound_port": 8086, "path": "/in6"  },
+      { "code": "fi", "label": "Finland",         "port": 9056, "control_port": 9156, "inbound_port": 8087, "path": "/in7"  },
+      { "code": "gb", "label": "United Kingdom",  "port": 9057, "control_port": 9157, "inbound_port": 8088, "path": "/in8"  },
+      { "code": "es", "label": "Spain",           "port": 9058, "control_port": 9158, "inbound_port": 8089, "path": "/in9"  },
+      { "code": "ro", "label": "Romania",         "port": 9059, "control_port": 9159, "inbound_port": 8090, "path": "/in10" }
+    ],
+
+    "verification": {
+      "enabled": true,
+      "check_interval": 60,
+      "max_failures": 5,
+      "_comment_test_urls": "Multiple independent IP-echo services are tried in order, first valid IPv4 wins. More sources = faster convergence + resilience if one service is down/rate-limited.",
+      "test_urls": [
+        "https://api.ipify.org",
+        "https://icanhazip.com",
+        "https://ifconfig.me/ip",
+        "https://checkip.amazonaws.com",
+        "https://api.myip.com"
+      ],
+      "_comment_geoip_providers": "Multiple independent geo-IP lookup providers, tried in order with short timeouts. Having 4 instead of 2 sharply cuts 'country undetermined' failures and speeds up discovery.",
+      "geoip_providers": [
+        "ip-api.com",
+        "ipinfo.io",
+        "ipwho.is",
+        "ipapi.co"
+      ]
+    }
+  },
+
+  "xui": {
+    "internal_port": 2053,
+    "web_base_path": "/managepanel",
+    "default_username": "admin",
+    "default_password": "admin"
+  },
+
+  "direct": {
+    "_comment": "Direct (non-Tor) egress. IMPORTANT: port is now INTERNAL ONLY (127.0.0.1). Public traffic always enters via nginx on port 3000 and is reverse-proxied to this port. Do NOT expose this port publicly.",
+    "enabled": true,
+    "port": 8080,
+    "path": "/direct",
+    "tag": "direct-inbound"
+  },
+
+  "server": {
+    "_comment": "The single public-facing port. nginx listens here and is the ONLY process bound to 0.0.0.0. Everything else (xray inbounds, the panel, Tor SOCKS ports) binds to 127.0.0.1 and is reachable only internally.",
+    "public_port": 3000
+  }
+}
